@@ -1500,9 +1500,10 @@ select option {
   /* Modernized for v1.66: solid sage pill on active (was just an
      outline), smooth hover lift + tint, spring-y scale transition.
      Active uses the same accent color as the rest of the design
-     system so the highlighted tab reads as a primary CTA. */
+     system so the highlighted tab reads as a primary CTA.
+     v1.66.1: tighter padding so 6 nav items fit at 2xl. */
   .nav-pill {
-    padding: 7px 18px;
+    padding: 5px 14px;
     font-size: 0.82rem;
     font-weight: 500;
     color: var(--pill-text);

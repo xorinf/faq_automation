@@ -123,10 +123,12 @@ export default function Navbar() {
         </NavLink>
 
         {/* Center Pill Group (Desktop) — Vertically centered in the
-            navbar. Hidden on lg, shown on xl so it doesn't fight
-            with the right-side controls (Ask Question + SP + bell +
-            avatar) for horizontal space. */}
-        <div className="hidden xl:flex items-center gap-1 px-2 py-1 rounded-full border-[1.5px] border-border/60 bg-card/85 backdrop-blur-[20px] shadow-subtle absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-300 hover:bg-card/95">
+            navbar. Hidden on lg, shown on 2xl so it doesn't fight
+            with the right-side controls (ThemeToggle + SP + bell +
+            avatar) for horizontal space. Tighter padding (gap-0.5
+            px-2) + smaller font keeps "Support" and "Golden" from
+            truncating at the 1280–1535px range. */}
+        <div className="hidden 2xl:flex items-center gap-0.5 px-2 py-1 rounded-full border-[1.5px] border-border/60 bg-card/85 backdrop-blur-[20px] shadow-subtle absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-300 hover:bg-card/95">
           {allNavItems.map(({ label, to, xlOnly }) => (
             <NavLink
               key={to}
@@ -136,7 +138,7 @@ export default function Navbar() {
                 // Active = solid sage pill with white text.
                 // Inactive = transparent, ink-soft, hover lifts to ink.
                 // transition-all duration-200 = smooth hover.
-                `nav-pill ${isActive ? 'active' : ''} ${xlOnly ? 'hidden xl:inline-flex' : ''}`
+                `nav-pill text-[0.78rem] ${isActive ? 'active' : ''} ${xlOnly ? 'hidden xl:inline-flex' : ''}`
               }
             >
               {label}
@@ -171,10 +173,13 @@ export default function Navbar() {
           {/* Authenticated Utility Group */}
           {isAuthenticated && (
             <div className="flex items-center gap-3 lg:gap-4">
-              {/* Ask Question button */}
+              {/* Ask Question button — hidden until 2xl (1536px) so
+                  it stops fighting the center pill for space on
+                  narrower desktop screens. Users can still ask
+                  from /community. */}
               <button
                 onClick={() => navigate('/community?ask=true')}
-                className="hidden lg:inline-flex btn-base btn-primary text-xs"
+                className="hidden 2xl:inline-flex btn-base btn-primary text-xs"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
