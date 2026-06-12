@@ -581,9 +581,14 @@ export const runAutoAnswer = async (req: Request, res: Response): Promise<void> 
 let autoAnswerIntervalHandle: ReturnType<typeof setInterval> | null = null;
 
 /** Run the auto-answer processor (fire-and-forget). Call this on startup. */
+// v1.68 — M5: read interval fresh on every tick.
+function readCheckIntervalH(): number {
+  return parseInt(process.env['AUTO_ANSWER_INTERVAL_HOURS'] || '24', 10);
+}
+
 export async function runScheduledAutoAnswer(): Promise<void> {
-  const CHECK_INTERVAL_H = parseInt(process.env['AUTO_ANSWER_INTERVAL_HOURS'] || '24');
-  const ms = CHECK_INTERVAL_H * 60 * 60 * 1000;
+  const intervalH = readCheckIntervalH();
+  const ms = intervalH * 60 * 60 * 1000;
 
   if (autoAnswerIntervalHandle) clearInterval(autoAnswerIntervalHandle);
 
@@ -593,7 +598,7 @@ export async function runScheduledAutoAnswer(): Promise<void> {
     });
   }, ms);
 
-  cronLog.info(`[autoAnswer] Scheduler started — running every ${CHECK_INTERVAL_H}h`);
+  cronLog.info(`[autoAnswer] Scheduler started — running every ${readCheckIntervalH()}h`);
 
   // Also run once on startup (with a delay to let the server warm up)
   setTimeout(() => {
@@ -630,7 +635,9 @@ async function runAutoAnswerInternal(): Promise<void> {
     return;
   }
 
-  cronLog.info(`[autoAnswer] Starting scheduled run — ${posts.length} posts to process.`);
+  cronLog.info(`Starting scheduled run — ${posts.length} posts to process.`);
+  // v1.68 — M5: read interval fresh on every tick.
+  cronLog.info(`Starting scheduled run`, { posts: posts.length, intervalH: readCheckIntervalH() });
   const results = { processed: 0, auto_approved: 0, suggested: 0, escalated: 0, errors: 0 };
   for (const post of posts) {
     try {

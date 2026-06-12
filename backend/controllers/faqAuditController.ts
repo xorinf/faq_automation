@@ -36,7 +36,11 @@ import {
 } from '../utils/ai/pipelineCommon.js';
 
 // ─── Config ──────────────────────────────────────────────────────────────────
-const AUDIT_BATCH_SIZE = parseInt(process.env['FAQ_AUDIT_BATCH_SIZE'] || '20');
+// v1.68 — M5: read interval fresh on every tick.
+const AUDIT_BATCH_SIZE = parseInt(process.env['FAQ_AUDIT_BATCH_SIZE'] || '20', 10);
+function readAuditIntervalH(): number {
+  return parseInt(process.env['FAQ_AUDIT_readAuditIntervalH()OURS'] || '6', 10);
+}
 const FLAG_THRESHOLD   = parseFloat(process.env['FAQ_AUDIT_FLAG_THRESHOLD'] || '0.65');
 const MIN_CONFIDENCE   = 0.35; // Below this confidence in AI's judgment → skip flagging
 const MAX_SOURCE_CHARS = 3000; // Max knowledge context sent to AI for comparison
@@ -450,8 +454,8 @@ export const getAuditStats = async (_req: Request, res: Response): Promise<void>
 let auditIntervalHandle: ReturnType<typeof setInterval> | null = null;
 
 export async function runScheduledFAQAudit(): Promise<void> {
-  const INTERVAL_H = parseInt(process.env['FAQ_AUDIT_INTERVAL_HOURS'] || '6');
-  const ms = INTERVAL_H * 60 * 60 * 1000;
+  const intervalH = readAuditIntervalH();
+  const ms = intervalH * 60 * 60 * 1000;
 
   if (auditIntervalHandle) clearInterval(auditIntervalHandle);
 
@@ -461,7 +465,7 @@ export async function runScheduledFAQAudit(): Promise<void> {
     });
   }, ms);
 
-  cronLog.info(`[faqAudit] Scheduler started — running every ${INTERVAL_H}h`);
+  cronLog.info(`[faqAudit] Scheduler started — running every ${readAuditIntervalH()}h`);
 
   // Run once on startup after 60s warmup
   setTimeout(() => {
