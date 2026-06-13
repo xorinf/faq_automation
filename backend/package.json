@@ -21,7 +21,8 @@
     "backfill:community": "tsx scripts/backfillCommunityEmbeddings.ts",
     "backfill:public-metrics": "tsx scripts/backfillPublicMetrics.ts",
     "audit:data": "tsx scripts/auditData.ts",
-    "cleanup:orphan-notifications": "tsx scripts/cleanupOrphanNotifications.ts"
+    "cleanup:orphan-notifications": "tsx scripts/cleanupOrphanNotifications.ts",
+    "seed:live": "tsx scripts/seedLiveData.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
