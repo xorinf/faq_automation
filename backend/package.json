@@ -23,6 +23,7 @@
     "audit:data": "tsx scripts/auditData.ts",
     "cleanup:orphan-notifications": "tsx scripts/cleanupOrphanNotifications.ts",
     "seed:live": "tsx scripts/seedLiveData.ts",
+    "cleanup:seed": "tsx scripts/cleanupSeedData.ts",
     "recompute:tier": "tsx scripts/recomputeTier.ts"
   },
   "dependencies": {
