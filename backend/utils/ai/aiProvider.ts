@@ -19,16 +19,20 @@
 import AiConfig from '../../models/AiConfig.js';
 import { logger } from '../http/logger.js';
 
+// Names of supported AI vendors/providers (used throughout the backend).
 export type AIProvider = 'anthropic' | 'openai' | 'xai' | 'minimax' | 'gemini' | 'custom';
 
-/** Per-pipeline (pipeline=faq_audit|auto_answer) provider override keys */
+/**
+ * Optional env var overrides per pipeline.
+ * If set, they force which provider/model to use for that pipeline.
+ */
 export const PIPELINE_PROVIDER_KEY: Record<string, string> = {
-  faq_audit:    process.env.FAQ_AUDIT_PROVIDER    ?? '',
-  auto_answer:  process.env.AUTO_ANSWER_PROVIDER  ?? '',
+  faq_audit: process.env.FAQ_AUDIT_PROVIDER ?? '',
+  auto_answer: process.env.AUTO_ANSWER_PROVIDER ?? '',
 };
 export const PIPELINE_MODEL_KEY: Record<string, string> = {
-  faq_audit:    process.env.FAQ_AUDIT_MODEL       ?? '',
-  auto_answer:  process.env.AUTO_ANSWER_MODEL     ?? '',
+  faq_audit: process.env.FAQ_AUDIT_MODEL ?? '',
+  auto_answer: process.env.AUTO_ANSWER_MODEL ?? '',
 };
 
 /**
@@ -40,9 +44,9 @@ export function resolvePipelineProvider(pipeline: string): AIProvider {
   if (override && isValidProvider(override)) return override;
   // Fall back to the first provider that has an API key configured
   if (process.env.ANTHROPIC_API_KEY) return 'anthropic';
-  if (process.env.OPENAI_API_KEY)    return 'openai';
-  if (process.env.XAI_API_KEY)       return 'xai';
-  if (process.env.MINIMAX_API_KEY)   return 'minimax';
+  if (process.env.OPENAI_API_KEY) return 'openai';
+  if (process.env.XAI_API_KEY) return 'xai';
+  if (process.env.MINIMAX_API_KEY) return 'minimax';
   return 'minimax'; // default — will fail gracefully at chat() with a clear error
 }
 
@@ -130,8 +134,8 @@ export async function getPipelineProviderConfig(
     }
   }
 
-  const model    = resolvePipelineModel(pipeline, provider);
-  const keyEnv   = {
+  const model = resolvePipelineModel(pipeline, provider);
+  const keyEnv = {
     anthropic: 'ANTHROPIC_API_KEY',
     openai: 'OPENAI_API_KEY',
     xai: 'XAI_API_KEY',
@@ -139,8 +143,8 @@ export async function getPipelineProviderConfig(
     gemini: 'GEMINI_API_KEY',
     custom: 'CUSTOM_API_KEY'
   }[provider];
-  const apiKey   = (db[provider].apiKey || process.env[keyEnv] || '') as string;
-  const baseURL  = db[provider].baseURL || envBaseUrl(provider);
+  const apiKey = (db[provider].apiKey || process.env[keyEnv] || '') as string;
+  const baseURL = db[provider].baseURL || envBaseUrl(provider);
   return {
     ...PROVIDER_DEFAULTS[provider],
     provider,
@@ -160,55 +164,55 @@ export interface ProviderConfig {
 }
 
 const PROVIDER_DEFAULTS: Record<AIProvider, Omit<ProviderConfig, 'apiKey' | 'baseURL' | 'model'>> = {
-  anthropic: { provider: 'anthropic', authHeader: 'x-api-key',     needsAnthropicVersion: true },
-  openai:    { provider: 'openai',    authHeader: 'Authorization', needsAnthropicVersion: false },
-  xai:       { provider: 'xai',       authHeader: 'Authorization', needsAnthropicVersion: false },
-  minimax:   { provider: 'minimax',   authHeader: 'Authorization', needsAnthropicVersion: false },
-  gemini:    { provider: 'gemini',    authHeader: 'Authorization', needsAnthropicVersion: false },
-  custom:    { provider: 'custom',    authHeader: 'Authorization', needsAnthropicVersion: false },
+  anthropic: { provider: 'anthropic', authHeader: 'x-api-key', needsAnthropicVersion: true },
+  openai: { provider: 'openai', authHeader: 'Authorization', needsAnthropicVersion: false },
+  xai: { provider: 'xai', authHeader: 'Authorization', needsAnthropicVersion: false },
+  minimax: { provider: 'minimax', authHeader: 'Authorization', needsAnthropicVersion: false },
+  gemini: { provider: 'gemini', authHeader: 'Authorization', needsAnthropicVersion: false },
+  custom: { provider: 'custom', authHeader: 'Authorization', needsAnthropicVersion: false },
 };
 
 const DEFAULT_BASE_URLS: Record<AIProvider, string> = {
   anthropic: 'https://api.anthropic.com/v1',
-  openai:    'https://api.openai.com/v1',
-  xai:       'https://api.x.ai/v1',
-  minimax:   'https://api.minimax.io/v1',
-  gemini:    'https://generativelanguage.googleapis.com/v1beta/openai',
-  custom:    'http://localhost:11434/v1',
+  openai: 'https://api.openai.com/v1',
+  xai: 'https://api.x.ai/v1',
+  minimax: 'https://api.minimax.io/v1',
+  gemini: 'https://generativelanguage.googleapis.com/v1beta/openai',
+  custom: 'http://localhost:11434/v1',
 };
 
 const DEFAULT_MODELS: Record<AIProvider, string> = {
   anthropic: 'claude-sonnet-4-20250514',
-  openai:    'gpt-4o-mini',
-  xai:       'grok-3',
-  minimax:   'MiniMax-Text-01',
-  gemini:    'gemini-1.5-flash',
-  custom:    'custom-model',
+  openai: 'gpt-4o-mini',
+  xai: 'grok-3',
+  minimax: 'MiniMax-Text-01',
+  gemini: 'gemini-1.5-flash',
+  custom: 'custom-model',
 };
 
 const ENV_KEY: Record<AIProvider, string> = {
   anthropic: 'ANTHROPIC_API_KEY',
-  openai:    'OPENAI_API_KEY',
-  xai:       'XAI_API_KEY',
-  minimax:   'MINIMAX_API_KEY',
-  gemini:    'GEMINI_API_KEY',
-  custom:    'CUSTOM_API_KEY',
+  openai: 'OPENAI_API_KEY',
+  xai: 'XAI_API_KEY',
+  minimax: 'MINIMAX_API_KEY',
+  gemini: 'GEMINI_API_KEY',
+  custom: 'CUSTOM_API_KEY',
 };
 const ENV_MODEL: Record<AIProvider, string> = {
   anthropic: 'ANTHROPIC_MODEL',
-  openai:    'OPENAI_MODEL',
-  xai:       'XAI_MODEL',
-  minimax:   'MINIMAX_MODEL',
-  gemini:    'GEMINI_MODEL',
-  custom:    'CUSTOM_MODEL',
+  openai: 'OPENAI_MODEL',
+  xai: 'XAI_MODEL',
+  minimax: 'MINIMAX_MODEL',
+  gemini: 'GEMINI_MODEL',
+  custom: 'CUSTOM_MODEL',
 };
 const ENV_BASE_URL: Record<AIProvider, string> = {
   anthropic: 'ANTHROPIC_BASE_URL',
-  openai:    'OPENAI_BASE_URL',
-  xai:       'XAI_BASE_URL',
-  minimax:   'MINIMAX_BASE_URL',
-  gemini:    'GEMINI_BASE_URL',
-  custom:    'CUSTOM_BASE_URL',
+  openai: 'OPENAI_BASE_URL',
+  xai: 'XAI_BASE_URL',
+  minimax: 'MINIMAX_BASE_URL',
+  gemini: 'GEMINI_BASE_URL',
+  custom: 'CUSTOM_BASE_URL',
 };
 
 // ── DB override cache (TTL 5s) ──────────────────────────────────────────────
@@ -216,11 +220,11 @@ const ENV_BASE_URL: Record<AIProvider, string> = {
 
 interface DbOverrides {
   anthropic: { apiKey: string; baseURL: string; model: string };
-  openai:    { apiKey: string; baseURL: string; model: string };
-  xai:       { apiKey: string; baseURL: string; model: string };
-  minimax:   { apiKey: string; baseURL: string; model: string };
-  gemini:    { apiKey: string; baseURL: string; model: string };
-  custom:    { apiKey: string; baseURL: string; model: string };
+  openai: { apiKey: string; baseURL: string; model: string };
+  xai: { apiKey: string; baseURL: string; model: string };
+  minimax: { apiKey: string; baseURL: string; model: string };
+  gemini: { apiKey: string; baseURL: string; model: string };
+  custom: { apiKey: string; baseURL: string; model: string };
 };
 
 let _cache: { value: DbOverrides; expiresAt: number } | null = null;
@@ -332,9 +336,9 @@ export async function resolveProviderAsync(provider?: AIProvider): Promise<Provi
   }
 
   const override = db[chosen];
-  const apiKey  = override.apiKey  || process.env[ENV_KEY[chosen]]      || '';
+  const apiKey = override.apiKey || process.env[ENV_KEY[chosen]] || '';
   const baseURL = (override.baseURL || process.env[ENV_BASE_URL[chosen]] || DEFAULT_BASE_URLS[chosen]).replace(/\/$/, '');
-  const model   = getModelForProvider(override.model || process.env[ENV_MODEL[chosen]] || DEFAULT_MODELS[chosen], chosen);
+  const model = getModelForProvider(override.model || process.env[ENV_MODEL[chosen]] || DEFAULT_MODELS[chosen], chosen);
 
   return {
     ...PROVIDER_DEFAULTS[chosen],
@@ -354,19 +358,19 @@ export function resolveProvider(): ProviderConfig {
     return { ...PROVIDER_DEFAULTS.anthropic, provider: 'anthropic', apiKey: process.env.ANTHROPIC_API_KEY, baseURL: envBaseUrl('anthropic'), model: envModel('anthropic') };
   }
   if (process.env.OPENAI_API_KEY) {
-    return { ...PROVIDER_DEFAULTS.openai,    provider: 'openai',    apiKey: process.env.OPENAI_API_KEY,    baseURL: envBaseUrl('openai'),    model: envModel('openai') };
+    return { ...PROVIDER_DEFAULTS.openai, provider: 'openai', apiKey: process.env.OPENAI_API_KEY, baseURL: envBaseUrl('openai'), model: envModel('openai') };
   }
   if (process.env.XAI_API_KEY) {
-    return { ...PROVIDER_DEFAULTS.xai,       provider: 'xai',       apiKey: process.env.XAI_API_KEY,       baseURL: envBaseUrl('xai'),       model: envModel('xai') };
+    return { ...PROVIDER_DEFAULTS.xai, provider: 'xai', apiKey: process.env.XAI_API_KEY, baseURL: envBaseUrl('xai'), model: envModel('xai') };
   }
   if (process.env.MINIMAX_API_KEY || process.env.MINIMAX_BASE_URL) {
-    return { ...PROVIDER_DEFAULTS.minimax,   provider: 'minimax',   apiKey: process.env.MINIMAX_API_KEY ?? '', baseURL: envBaseUrl('minimax'), model: envModel('minimax') };
+    return { ...PROVIDER_DEFAULTS.minimax, provider: 'minimax', apiKey: process.env.MINIMAX_API_KEY ?? '', baseURL: envBaseUrl('minimax'), model: envModel('minimax') };
   }
   if (process.env.GEMINI_API_KEY) {
-    return { ...PROVIDER_DEFAULTS.gemini,    provider: 'gemini',    apiKey: process.env.GEMINI_API_KEY,    baseURL: envBaseUrl('gemini'),    model: envModel('gemini') };
+    return { ...PROVIDER_DEFAULTS.gemini, provider: 'gemini', apiKey: process.env.GEMINI_API_KEY, baseURL: envBaseUrl('gemini'), model: envModel('gemini') };
   }
   if (process.env.CUSTOM_API_KEY) {
-    return { ...PROVIDER_DEFAULTS.custom,    provider: 'custom',    apiKey: process.env.CUSTOM_API_KEY,    baseURL: envBaseUrl('custom'),    model: envModel('custom') };
+    return { ...PROVIDER_DEFAULTS.custom, provider: 'custom', apiKey: process.env.CUSTOM_API_KEY, baseURL: envBaseUrl('custom'), model: envModel('custom') };
   }
   throw new Error(
     'No AI API key configured. Set one of:\n' +
@@ -391,11 +395,11 @@ export async function hasAIKeyAsync(): Promise<boolean> {
   const db = await loadDbOverrides();
   return !!(
     db.anthropic.apiKey || process.env.ANTHROPIC_API_KEY ||
-    db.openai.apiKey    || process.env.OPENAI_API_KEY    ||
-    db.xai.apiKey       || process.env.XAI_API_KEY       ||
-    db.minimax.apiKey   || process.env.MINIMAX_API_KEY   ||
-    db.gemini.apiKey    || process.env.GEMINI_API_KEY    ||
-    db.custom.apiKey    || process.env.CUSTOM_API_KEY
+    db.openai.apiKey || process.env.OPENAI_API_KEY ||
+    db.xai.apiKey || process.env.XAI_API_KEY ||
+    db.minimax.apiKey || process.env.MINIMAX_API_KEY ||
+    db.gemini.apiKey || process.env.GEMINI_API_KEY ||
+    db.custom.apiKey || process.env.CUSTOM_API_KEY
   );
 }
 
@@ -422,7 +426,10 @@ export function getProvider(provider: AIProvider): ProviderConfig {
   };
 }
 
-/** Async resolve for a specific provider (checks DB then env). */
+/**
+ * Async resolve for a specific provider.
+ * Order: try DB (AiConfig active provider) first, then fall back to env vars.
+ */
 export async function getProviderAsync(provider: AIProvider): Promise<ProviderConfig> {
   return resolveProviderAsync(provider);
 }
