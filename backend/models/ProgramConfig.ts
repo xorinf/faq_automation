@@ -43,6 +43,13 @@ export interface IDiscordConfig {
   botToken?: string | null;
   applicationId?: string | null;
   guildId?: string | null;
+  /**
+   * v1.69 — Phase 6: the bot pushes tea-drop notifications
+   * (mentions, status changes) to this channel inside the
+   * guild. Per-program so each program's bot posts to its
+   * own notification channel rather than a global one.
+   */
+  notificationChannelId?: string | null;
   /** Plain URL (webhooks aren't secret-shaped like bot tokens). */
   webhookUrl?: string | null;
   enabled: boolean;
@@ -88,6 +95,8 @@ const programConfigSchema = new MongooseSchema<IProgramConfig>(
       botToken:      { type: String, default: null },
       applicationId: { type: String, default: null },
       guildId:       { type: String, default: null },
+      // v1.69 — Phase 6: per-program notification channel.
+      notificationChannelId: { type: String, default: null },
       webhookUrl:    { type: String, default: null },
       enabled:       { type: Boolean, default: false },
     },

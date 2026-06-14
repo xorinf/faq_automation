@@ -191,7 +191,7 @@ export async function adminUpdatePerProgramSetting(
     res.status(500).json({ message: 'Failed to save per-program app setting.' });
   }
 }
-}
+
 /**
  * GET /api/public/settings
  * v1.69 — Phase 9: per-program scoped. When ?batchId=... is

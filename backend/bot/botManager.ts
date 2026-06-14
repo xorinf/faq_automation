@@ -36,9 +36,22 @@ export interface ProgramBotConfig {
   batchId: string;
   botToken: string;
   applicationId: string;
+  /** Mirror of applicationId so the legacy BotConfig shape is
+   *  satisfied without alias gymnastics at every call site. */
+  clientId: string;
   guildId: string;
   webhookUrl: string | null;
   notificationChannelId: string | null;
+  // v1.69 — Phase 6: registerCommands (the legacy command
+  // registration helper) requires the full BotConfig shape.
+  // Per-program bots don't currently use these fields but
+  // the type alignment is needed for the registration call
+  // to type-check. Per-program defaults are sensible
+  // (empty arrays, sensible URLs).
+  adminUserIds: string[];
+  publicChannelId: string | null;
+  publicUrl: string;
+  internalApiKey: string | null;
 }
 
 export interface BotInstance {
@@ -76,9 +89,16 @@ class BotManager {
       batchId,
       botToken,
       applicationId: doc.discord.applicationId ?? '',
+      clientId: doc.discord.applicationId ?? '',
       guildId: doc.discord.guildId ?? '',
       webhookUrl: doc.discord.webhookUrl ?? null,
       notificationChannelId: doc.discord.notificationChannelId ?? null,
+      // Sensible defaults so the per-program bot fits the
+      // legacy BotConfig shape.
+      adminUserIds: [],
+      publicChannelId: null,
+      publicUrl: process.env.PUBLIC_URL ?? 'http://localhost:6767',
+      internalApiKey: process.env.INTERNAL_API_KEY ?? null,
     };
     if (!cfg.guildId) {
       logger.warn(`[botManager] Program ${batchId} has discord.enabled but no guildId — skipping.`);
@@ -114,7 +134,16 @@ class BotManager {
       instance.client.once(Events.ClientReady, async (c) => {
         logger.info(`[botManager] Program ${batchId} bot ready — logged in as ${c.user.tag}`);
         try {
-          await registerCommands(c, instance!.config.applicationId, instance!.config.guildId);
+          // v1.69 — Phase 6: pass the new single-config-object
+          // shape (BotConfig + scope) that registerCommands
+          // expects. The botToken lives on instance.config (the
+          // decrypted cipher is already in memory at this
+          // point).
+          await registerCommands({
+            ...instance!.config,
+            clientId: instance!.config.applicationId,
+            scope: 'guild' as const,
+          });
           logger.info(`[botManager] Program ${batchId} commands registered for guild ${instance!.config.guildId}`);
         } catch (err) {
           logger.error(`[botManager] Program ${batchId} command registration failed: ${(err as Error).message}`);

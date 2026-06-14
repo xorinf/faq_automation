@@ -255,7 +255,14 @@ export const getLeaderboard = async (req: Request, res: Response): Promise<void>
         .populate('userId', 'name tier createdAt positiveBadges acceptedAnswers faqContributions')
         .lean();
       const rank = perProgramRows
-        .filter((r) => r.userId && !r.userId.isDeleted && !r.userId.isBanned)
+        // v1.69 — Phase 3i: cast the populated userId to
+        // { isDeleted, isBanned, name, ... } so tsc can read
+        // the User fields after the .populate(). Without the
+        // cast, tsc only sees the bare ObjectId.
+        .filter((r) => {
+          const u = r.userId as unknown as { isDeleted?: boolean; isBanned?: boolean } | null;
+          return u && !u.isDeleted && !u.isBanned;
+        })
         .map((r, i) => {
           const u = r.userId as { name?: string; tier?: string; createdAt?: Date; positiveBadges?: unknown[]; acceptedAnswers?: number; faqContributions?: number };
           return {

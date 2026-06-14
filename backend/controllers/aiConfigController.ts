@@ -13,6 +13,7 @@
  */
 
 import { Request, Response } from 'express';
+import { Types } from 'mongoose';
 import AiConfig, { type IAiConfig, type AIProviderType } from '../models/AiConfig.js';
 import { logAction } from './adminController.js';
 import { invalidateProviderCache } from '../utils/ai/aiProvider.js';

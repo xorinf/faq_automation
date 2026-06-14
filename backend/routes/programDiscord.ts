@@ -8,13 +8,13 @@
 
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { protect, authorize } from '../../middleware/auth.js';
+import { protect, authorize } from '../middleware/auth.js';
 import {
   getProgramDiscordConfigRoute,
   upsertProgramDiscordConfig,
   disableProgramDiscordConfig,
   enableProgramDiscordConfig,
-} from '../../controllers/programDiscordController.js';
+} from '../controllers/programDiscordController.js';
 
 const router = Router({ mergeParams: true });
 

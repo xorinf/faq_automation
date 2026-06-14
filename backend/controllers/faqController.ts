@@ -18,8 +18,13 @@ import { invalidatePublicCaches } from './publicFaqController.js';
 // (no batchId) keep working until the rollout flips required=true.
 import { withProgramScope } from '../utils/db/scopedQuery.js';
 
-function batchIdFromQuery(req: Request): string | null {
-  const raw = req.query.batchId;
+// v1.69 — batchIdFromQuery helper: read ?batchId=... from
+// any request. The type is intentionally narrow ({query: any})
+// so it accepts every Request<T, ..., CustomQuery, ...>
+// shape in the codebase. The value is validated against
+// Types.ObjectId.isValid.
+function batchIdFromQuery(req: { query: any }): string | null {
+  const raw = req.query?.batchId;
   return typeof raw === 'string' && Types.ObjectId.isValid(raw) ? raw : null;
 }
 
@@ -100,6 +105,9 @@ export const getAllFAQs = async (req: Request<{}, {}, {}, GetAllFAQsQuery>, res:
     if (category) query.category = category;
     if (cursorId) query._id = { $lt: cursorId };
     // v1.69 — Phase 3a: scope every read to the active program.
+    // withProgramScope returns FilterQuery<T> which is
+    // structurally compatible with mongoose's find/count
+    // filters — no cast needed.
     const scoped = withProgramScope(query, batchIdFromQuery(req));
 
     const totalCount = await FAQ.countDocuments(scoped);

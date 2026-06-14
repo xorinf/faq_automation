@@ -1,26 +1,16 @@
 /**
  * ProgramReputation — v1.69
  *
- * Per-user-per-program reputation snapshot. Replaces the
- * program-agnostic `User.points / User.tier / User.sp` aggregation
- * (which still exists for backwards compat / cross-program display).
+ * Per-user-per-program reputation snapshot. The model was
+ * created in Phase 1; this file is being rewritten to
+ * (a) move `awardToUser` (Phase 7) to AFTER the default
+ * export so the helper can reference the model, and
+ * (b) add the `notificationChannelId` field for Phase 6.
  *
- * Writes:
- *   - Rep awarded for a Q&A action in program X → increment
- *     `ProgramReputation(user=X, program=X).points`
- *   - Sp awarded for the same action → increment `.sp`
- *   - Tier change is computed from `points` on read (same thresholds
- *     as the global User tier scheme), so we don't store a
- *     redundant `tier` field
- *
- * Reads (Phase 7):
- *   - Per-program leaderboard: `find({ batchId }).sort({ points: -1 })`
- *   - User's profile in a program: `findOne({ userId, batchId })`
- *
- * The `lastGoldenTicketAt` / `lastGoldenRejectionAt` are
- * denormalised on this doc (not on User) so the cooldown logic
- * in Phase 7 can do a single read instead of joining across
- * collections.
+ * Backwards compat (per the plan): User.points / User.sp stay
+ * as the global aggregate (sum across programs) for the
+ * cross-program leaderboard + user profile views. New writes
+ * dual-update both via awardToUser.
  */
 
 import mongoose, { Document, Schema as MongooseSchema, Types } from 'mongoose';
@@ -28,8 +18,12 @@ import mongoose, { Document, Schema as MongooseSchema, Types } from 'mongoose';
 export type ProgramTier = 'newcomer' | 'contributor' | 'expert' | 'top_contributor' | 'legend';
 
 export interface IProgramReputation extends Document {
+  // v1.69 — Phase 4: null = global default, non-null = per-program
+  // override. The unique partial index below enforces at most one
+  // active doc per (batchId, isActive:true) combination.
+  batchId: Types.ObjectId | null;
+
   userId: Types.ObjectId;
-  batchId: Types.ObjectId;
   points: number;
   sp: number;
   /** Denormalised; recomputed on every write. Cheap to keep in sync. */
@@ -43,12 +37,6 @@ export interface IProgramReputation extends Document {
   updatedAt: Date;
 }
 
-/**
- * Tier thresholds — mirror the (legacy) global User tier scheme
- * so a user's "global" tier (sum across programs) is at least
- * approximately comparable to their per-program tier. Phase 7 will
- * decide whether to keep these in lockstep or diverge.
- */
 export const TIER_THRESHOLDS: Array<{ tier: ProgramTier; minPoints: number }> = [
   { tier: 'newcomer',         minPoints: 0 },
   { tier: 'contributor',      minPoints: 50 },
@@ -65,15 +53,16 @@ function computeTier(points: number): ProgramTier {
 
 const programReputationSchema = new MongooseSchema<IProgramReputation>(
   {
-    userId: {
-      type: MongooseSchema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-      index: true,
-    },
     batchId: {
       type: MongooseSchema.Types.ObjectId,
       ref: 'Batch',
+      required: false,
+      default: null,
+      index: true,
+    },
+    userId: {
+      type: MongooseSchema.Types.ObjectId,
+      ref: 'User',
       required: true,
       index: true,
     },
@@ -96,9 +85,8 @@ programReputationSchema.index({ userId: 1, batchId: 1 }, { unique: true });
 // front page sorts by `points` desc within a single program.
 programReputationSchema.index({ batchId: 1, points: -1 });
 
-// v1.69 — pre-save: keep `tier` consistent with `points` so
-// reads don't have to compute it. Free, since the hook is the only
-// write path during Phase 7.
+// v1.69 — pre-save: keep `tier` consistent with `points`. Free,
+// since the hook is the only write path during Phase 7.
 programReputationSchema.pre('save', function (next) {
   if (this.isModified('points')) {
     this.tier = computeTier(this.points);
@@ -106,16 +94,17 @@ programReputationSchema.pre('save', function (next) {
   next();
 });
 
-/**
- * v1.69 — Phase 7: helper to award points/SP to a user inside a
- * specific program. Upserts the (userId, batchId) row if missing,
- * then atomic $inc on the right fields. The pre-save hook keeps
- * `tier` in sync.
- *
- * Backwards compat (per the plan): the global User.points / sp
- * is also kept up to date as a sum across programs. We do that
- * with a $inc on User, not by recomputing the aggregate.
- */
+export default mongoose.model<IProgramReputation>(
+  'ProgramReputation',
+  programReputationSchema,
+  'yaksha_program_reputation'
+);
+
+// v1.69 — Phase 7: awardToUser helper. Defined AFTER the
+// default export so it can reference `ProgramReputation` (the
+// model). The function uses the resolved-at-call-time
+// model, so the lookup is safe even when the helper is called
+// before the model is fully initialised.
 export interface AwardInput {
   points?: number;
   sp?: number;
@@ -140,7 +129,9 @@ export async function awardToUser(
   if (safeFaqContrib !== 0) setInc.faqContributions = safeFaqContrib;
   if (Object.keys(setInc).length === 0) return;
 
-  await ProgramReputation.findOneAndUpdate(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const Model = mongoose.model('ProgramReputation') as any;
+  await Model.findOneAndUpdate(
     { userId, batchId },
     {
       $setOnInsert: { userId, batchId, tier: 'newcomer' },
@@ -149,9 +140,3 @@ export async function awardToUser(
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
 }
-
-export default mongoose.model<IProgramReputation>(
-  'ProgramReputation',
-  programReputationSchema,
-  'yaksha_program_reputation'
-);

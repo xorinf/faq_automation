@@ -146,7 +146,11 @@ export const getTopCategories = async (req: Request, res: Response): Promise<voi
       { $limit: 10 },
     );
 
-    const data = await FAQ.aggregate(pipeline);
+    // v1.69 — PipelineStage cast — the pipeline is built
+    // dynamically (a \$match pre-stage when batchId is set)
+    // and TypeScript can't narrow the array element type
+    // through the spread. The runtime shape is correct.
+    const data = await FAQ.aggregate(pipeline as unknown as Parameters<typeof FAQ.aggregate>[0]);
 
     res.json(data.map((d) => ({ name: d._id, count: d.count, views: d.views })));
   } catch (error) {

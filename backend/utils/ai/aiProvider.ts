@@ -238,7 +238,12 @@ export async function resolveActiveAiConfig(batchId: string | null = null): Prom
   if (_configCache && _configCache.key === cacheKey && _configCache.expiresAt > Date.now()) {
     return _configCache.value;
   }
-  let config: Awaited<ReturnType<typeof AiConfig.findOne>> | null = null;
+  // v1.69 — Phase 4: walk the per-program → global resolver
+  // chain. We use `any` for the merged config type because
+  // mongoose's type narrowing doesn't flow through the
+  // `override ?? await ...` chain (the override and the
+  // fallback return different MongooseDocument variants).
+  let config: any = null;
   try {
     if (batchId) {
       // Try per-program override first, then global fallback.
@@ -267,8 +272,6 @@ export async function resolveActiveAiConfig(batchId: string | null = null): Prom
     };
     _configCache = { key: cacheKey, value: v, expiresAt: Date.now() + CACHE_TTL_MS };
     return v;
-  }
-  return null;
 }
 
 // v1.69 — Phase 4: legacy loadDbOverrides keeps the same name and

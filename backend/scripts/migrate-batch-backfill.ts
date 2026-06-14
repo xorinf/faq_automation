@@ -18,7 +18,7 @@ import Batch from '../models/Batch.js';
 import FAQ from '../models/FAQ.js';
 import Category from '../models/Category.js';
 import GuestEvent from '../models/GuestEvent.js';
-import { defaultSettings } from '../utils/program/defaultSettings.js';
+import { defaultSettings } from '../models/ProgramSettings.js';
 import ProgramSettings from '../models/ProgramSettings.js';
 import AiConfig from '../models/AiConfig.js';
 import FeatureFlag from '../models/FeatureFlag.js';

@@ -18,6 +18,7 @@
  */
 
 import { Request, Response } from 'express';
+import { Types } from 'mongoose';
 import SupportCategory, {
   SUPPORT_FIELD_TYPES,
   SUPPORT_ICON_KEYS,
@@ -116,6 +117,11 @@ export async function createCategory(req: Request, res: Response): Promise<void>
     iconKey?: string;
     steps?: string[];
     isActive?: boolean;
+    // v1.69 — Phase 9: per-program support categories. When
+    // batchId is supplied, the category is created as a
+    // per-program override; when null, the legacy global view
+    // is used (backwards compat for single-tenant installs).
+    batchId?: string;
   };
   const issueType = String(body.issueType || '').trim().toLowerCase();
   if (!isKebabCase(issueType)) {
@@ -131,14 +137,24 @@ export async function createCategory(req: Request, res: Response): Promise<void>
   const steps = Array.isArray(body.steps)
     ? body.steps.map((s) => String(s).trim()).filter(Boolean).slice(0, 20)
     : [];
+  const batchIdValid = body.batchId && Types.ObjectId.isValid(body.batchId)
+    ? new Types.ObjectId(body.batchId)
+    : null;
 
   const iconKey: SupportIconKey =
     SUPPORT_ICON_KEYS.includes(body.iconKey as SupportIconKey) ? (body.iconKey as SupportIconKey) : 'generic';
 
   try {
-    const exists = await SupportCategory.findOne({ issueType }).lean();
+    // v1.69 — Phase 9: uniqueness is now (batchId, issueType), not
+    // just issueType. The legacy `findOne({ issueType })` would
+    // collide if two programs wanted the same kebab-case key —
+    // we explicitly check (batchId, issueType) instead.
+    const exists = await SupportCategory.findOne({
+      issueType,
+      ...(batchIdValid ? { batchId: batchIdValid } : { batchId: null }),
+    }).lean();
     if (exists) {
-      res.status(409).json({ message: 'A category with this issueType already exists.' });
+      res.status(409).json({ message: 'A category with this issueType already exists in this program (or globally).' });
       return;
     }
     const max = await SupportCategory.findOne({}).sort({ displayOrder: -1 }).select('displayOrder').lean();
@@ -153,6 +169,10 @@ export async function createCategory(req: Request, res: Response): Promise<void>
       fields: [],
       isActive: body.isActive !== false,
       displayOrder,
+      // v1.69 — Phase 9: per-program override. When null,
+      // the category is the global default; when set, the
+      // category is only visible inside the named program.
+      batchId: batchIdValid,
       createdBy: userId,
     });
     res.status(201).json({ category: cat.toObject() });

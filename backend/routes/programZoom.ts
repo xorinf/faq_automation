@@ -9,12 +9,12 @@
 
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { protect, authorize } from '../../middleware/auth.js';
+import { protect, authorize } from '../middleware/auth.js';
 import {
   getProgramZoomConfigRoute,
   upsertProgramZoomConfig,
   disconnectProgramZoom,
-} from '../../controllers/programZoomController.js';
+} from '../controllers/programZoomController.js';
 
 const router = Router({ mergeParams: true });
 
