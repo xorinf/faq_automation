@@ -28,8 +28,8 @@ import { RedisStore, type RedisReply } from 'rate-limit-redis';
 import type { Store } from 'express-rate-limit';
 import { logger } from '../http/logger.js';
 
-let _store: Store | undefined;
-let _initialized = false;
+let _client: IORedis | null = null;
+let _clientInitialized = false;
 
 function buildRedisClient(): IORedis | null {
   const url = process.env.REDIS_TCP_URL;
@@ -54,32 +54,36 @@ function buildRedisClient(): IORedis | null {
   }
 }
 
-/**
- * Returns a rate-limit-redis RedisStore when REDIS_TCP_URL is set,
- * or undefined to signal express-rate-limit to use its default
- * in-memory Map. Memoized so all limiters share one connection.
- */
-export function getRedisRateLimitStore(): Store | undefined {
-  if (_initialized) return _store;
-  _initialized = true;
-  const client = buildRedisClient();
-  if (!client) {
+function getRedisClient(): IORedis | null {
+  if (_clientInitialized) return _client;
+  _clientInitialized = true;
+  _client = buildRedisClient();
+  if (_client) {
+    logger.info('[rateLimitRedis] Using Redis-backed rate limiter stores (shared connection)');
+  } else {
     logger.info('[rateLimitRedis] REDIS_TCP_URL not set — using in-memory rate limiter store (single-instance only)');
-    return undefined;
   }
+  return _client;
+}
+
+/**
+ * Returns a new RedisStore instance with a unique prefix when REDIS_TCP_URL is set,
+ * or undefined to signal express-rate-limit to use its default in-memory Map.
+ */
+export function getRedisRateLimitStore(prefix: string): Store | undefined {
+  const client = getRedisClient();
+  if (!client) return undefined;
   try {
-    _store = new RedisStore({
+    return new RedisStore({
       // sendCommand is the bridge rate-limit-redis uses to talk to
       // any Redis-compatible client. The signature expects
       // Promise<RedisReply>; cast the ioredis return value through unknown.
       sendCommand: (...args: string[]): Promise<RedisReply> =>
         client.call(...(args as [string, ...string[]])) as unknown as Promise<RedisReply>,
-      prefix: 'rl:',  // namespace in Redis — keeps our keys separate from BullMQ/Upstash usage
+      prefix: `rl:${prefix}:`,  // unique namespace in Redis per limiter
     });
-    logger.info('[rateLimitRedis] Using Redis-backed rate limiter store');
-    return _store;
   } catch (err) {
-    logger.warn(`[rateLimitRedis] Failed to construct RedisStore, falling back to in-memory: ${(err as Error).message}`);
+    logger.warn(`[rateLimitRedis] Failed to construct RedisStore for prefix ${prefix}, falling back to in-memory: ${(err as Error).message}`);
     return undefined;
   }
 }

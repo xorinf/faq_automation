@@ -70,10 +70,12 @@ interface LimiterConfig {
  * Otherwise express-rate-limit uses its in-memory Map.
  */
 export function createIdentityLimiter(config: LimiterConfig) {
-  // Resolve the store once per limiter. The RedisStore is memoized
-  // inside rateLimitRedis.ts, so we don't open a new connection per
-  // limiter — just reuse the same one for all five pre-built limiters.
-  const store: Store | undefined = getRedisRateLimitStore();
+  // Resolve the store once per limiter. To prevent sharing a single
+  // RedisStore instance across multiple rate limiters (which throws
+  // ERR_ERL_STORE_REUSE), we pass the unique keyPrefix to create
+  // a dedicated RedisStore instance per limiter using the shared Redis client.
+  const prefix = config.keyPrefix || 'default';
+  const store: Store | undefined = getRedisRateLimitStore(prefix);
   return rateLimit({
     windowMs: config.windowMs,
     max: config.max,
