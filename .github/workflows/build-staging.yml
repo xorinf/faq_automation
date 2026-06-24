@@ -101,8 +101,8 @@ jobs:
   # ── Deploy to Staging VPS ──────────────────────────────────────────────────
   deploy:
     if: >-
-      github.event_name == 'push' ||
-      github.event.inputs.should_deploy == 'true'
+      (github.event_name == 'push' || github.event.inputs.should_deploy == 'true') &&
+      secrets.STAGING_SSH_HOST != ''
     name: Deploy to Staging
     runs-on: ubuntu-latest
     needs: build
